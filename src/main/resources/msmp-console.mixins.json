@@ -4,7 +4,8 @@
   "package": "dev.loat.msmp_console.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "ManagementServerAccessor"
+    "ManagementServerAccessor",
+    "OutgoingRpcMethodBuilderAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

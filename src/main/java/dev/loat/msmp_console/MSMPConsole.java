@@ -2,12 +2,12 @@ package dev.loat.msmp_console;
 
 import dev.loat.msmp_console.logging.ConsoleNotificationAppender;
 import dev.loat.msmp_console.mixin.ManagementServerAccessor;
-import dev.loat.msmp_console.mixin.MinecraftServerAccessor;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.minecraft.core.Holder;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.jsonrpc.ManagementServer;
+import net.minecraft.server.jsonrpc.OutgoingRpcMethod;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.Logger;
 import org.apache.logging.log4j.core.LoggerContext;
@@ -15,49 +15,67 @@ import org.apache.logging.log4j.core.LoggerContext;
 
 public class MSMPConsole implements ModInitializer {
 
-    private static MinecraftServer serverInstance;
+    public static final Holder.Reference<OutgoingRpcMethod<ConsoleLogPayload, Void>> CONSOLE_MESSAGE =
+        OutgoingRpcMethod.<ConsoleLogPayload>notificationWithParams()
+            .description("A server console log message")
+            .param("message", ConsoleLogPayload.SCHEMA)
+            .register("console/message");
+
+    private static ManagementServer managementServer;
 
     @Override
     public void onInitialize() {
         registerLogAppender();
 
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
-            serverInstance = server;
+            managementServer = getManagementServer(server);
         });
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
-            serverInstance = null;
+            managementServer = null;
         });
     }
 
     private void registerLogAppender() {
         LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
         Logger root = ctx.getRootLogger();
-
-        ConsoleNotificationAppender appender = ConsoleNotificationAppender.createAppender("ConsoleNotificationAppender");
+        ConsoleNotificationAppender appender =
+            ConsoleNotificationAppender.createAppender("ConsoleNotificationAppender");
         appender.start();
         root.addAppender(appender);
     }
 
+    private static ManagementServer getManagementServer(MinecraftServer server) {
+        Class<?> clazz = server.getClass();
+        while (clazz != null) {
+            for (java.lang.reflect.Field field : clazz.getDeclaredFields()) {
+                if (field.getType() == ManagementServer.class) {
+                    try {
+                        field.setAccessible(true);
+                        ManagementServer ms = (ManagementServer) field.get(server);
+                        if (ms != null) return ms;
+                    } catch (Exception ignored) {}
+                }
+            }
+            clazz = clazz.getSuperclass();
+        }
+        return null;
+    }
+
     public static void sendConsoleNotification(ConsoleNotificationAppender.LogPayload payload) {
-        if (serverInstance == null) return;
+        if (managementServer == null) return;
 
-        ((MinecraftServerAccessor) serverInstance)
-            .getManagementServer()
-            .ifPresent(management -> {
-                JsonObject obj = new JsonObject();
-                obj.addProperty("timestamp", payload.timestamp());
-                obj.addProperty("level",     payload.level());
-                obj.addProperty("thread",    payload.thread());
-                obj.addProperty("logger",    payload.logger());
-                obj.addProperty("message",   payload.message());
-                if (payload.throwable() != null)
-                    obj.addProperty("throwable", payload.throwable());
+        ConsoleLogPayload rpcPayload = new ConsoleLogPayload(
+            payload.timestamp(),
+            payload.level(),
+            payload.thread(),
+            payload.logger(),
+            payload.message(),
+            payload.throwable() != null ? payload.throwable() : ""
+        );
 
-                JsonArray params = new JsonArray();
-                params.add(obj);
-
-                ((ManagementServerAccessor) management)
-                    .invokeBroadcastNotification("console:notification/message", params);
-            });
+        ((ManagementServerAccessor) managementServer)
+            .invokeForEachConnection(conn ->
+                conn.sendNotification(CONSOLE_MESSAGE, rpcPayload)
+            );
     }
 }

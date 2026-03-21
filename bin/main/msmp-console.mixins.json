@@ -4,7 +4,6 @@
   "package": "dev.loat.msmp_console.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "MinecraftServerAccessor",
     "ManagementServerAccessor"
   ],
   "injectors": {

@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "dev.loat.msmp_console.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "ManagementServerAccessor",
+    "OutgoingRpcMethodBuilderAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}

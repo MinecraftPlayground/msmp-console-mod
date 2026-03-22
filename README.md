@@ -20,7 +20,7 @@ A server-side Fabric mod for Minecraft 1.21.11+ that extends the [Minecraft Serv
 
 Once a client connects to the WebSocket endpoint, it will receive a notification for every log event produced by the server.
 
-**Method:** `console:notification/message`
+**Method:** `console:notification/log_event`
 
 ### Payload
 
@@ -38,7 +38,7 @@ Once a client connects to the WebSocket endpoint, it will receive a notification
 ```json
 {
   "jsonrpc": "2.0",
-  "method": "console:notification/message",
+  "method": "console:notification/log_event",
   "params": [{
     "timestamp": "2026-03-21T15:06:06.146Z",
     "level": "INFO",
@@ -52,7 +52,7 @@ Once a client connects to the WebSocket endpoint, it will receive a notification
 ```json
 {
   "jsonrpc": "2.0",
-  "method": "console:notification/message",
+  "method": "console:notification/log_event",
   "params": [{
     "timestamp": "2026-03-21T15:06:07.212Z",
     "level": "ERROR",

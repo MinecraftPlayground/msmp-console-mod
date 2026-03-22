@@ -59,7 +59,7 @@ public class MSMPConsole implements ModInitializer {
             OutgoingRpcMethod.<ConsoleLogPayload>notificationWithParams()
                 .description("A server console log message")
                 .param("message", ConsoleLogPayload.SCHEMA)
-        ).invokeRegister(Identifier.fromNamespaceAndPath("console", "notification/message"));
+        ).invokeRegister(Identifier.fromNamespaceAndPath("console", "notification/log_event"));
 
     /**
      * The cached {@link ManagementServer} instance, set on {@code SERVER_STARTED}

@@ -1,5 +1,8 @@
 package dev.loat.msmp_console;
 
+import dev.loat.msmp_console.config.Config;
+import dev.loat.msmp_console.config.ConfigManager;
+import dev.loat.msmp_console.config.files.MSMPConsoleConfigFile;
 import dev.loat.msmp_console.logging.ConsoleNotificationAppender;
 import dev.loat.msmp_console.mixin.ManagementServerAccessor;
 import dev.loat.msmp_console.mixin.OutgoingRpcMethodBuilderAccessor;
@@ -13,6 +16,7 @@ import net.minecraft.server.jsonrpc.OutgoingRpcMethod;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.Logger;
 import org.apache.logging.log4j.core.LoggerContext;
+
 
 /**
  * Main entrypoint of the MSMP Console mod.
@@ -68,6 +72,13 @@ public class MSMPConsole implements ModInitializer {
      */
     @Override
     public void onInitialize() {
+        dev.loat.msmp_console.logging.Logger.setLoggerClass(MSMPConsole.class);
+
+        ConfigManager.addConfig(new Config<>(
+            ConfigManager.resolve("config.yml"),
+            MSMPConsoleConfigFile.class
+        ));
+    
         registerLogAppender();
 
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
@@ -76,6 +87,8 @@ public class MSMPConsole implements ModInitializer {
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
             managementServer = null;
         });
+
+        dev.loat.msmp_console.logging.Logger.info("MSMP Console initialized.");
     }
 
     /**

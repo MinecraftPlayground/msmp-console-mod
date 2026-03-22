@@ -2,6 +2,10 @@ package dev.loat.msmp_console.config.files;
 
 import dev.loat.msmp_console.config.annotation.Comment;
 
+
+/**
+ * Represents the structure of the console configuration file.
+ */
 public final class MSMPConsoleConfigFile {
     @Comment("""        
     The default log level to use for the console logger.

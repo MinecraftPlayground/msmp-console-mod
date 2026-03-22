@@ -6,6 +6,7 @@ import dev.loat.msmp_console.logging.Logger;
 import java.io.File;
 import java.nio.file.Path;
 
+
 /**
  * Represents a configuration file.
  * 

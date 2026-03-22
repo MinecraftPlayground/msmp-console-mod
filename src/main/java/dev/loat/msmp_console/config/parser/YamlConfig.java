@@ -22,6 +22,11 @@ import java.util.List;
 import java.util.Map;
 
 
+/**
+ * Utility class for parsing and serializing YAML configuration files with support for comments.
+ *
+ * @param <ConfigClass> The type of the configuration class to parse/serialize.
+ */
 public class YamlConfig<ConfigClass> {
     private final String filePath;
     private final Class<ConfigClass> configClass;

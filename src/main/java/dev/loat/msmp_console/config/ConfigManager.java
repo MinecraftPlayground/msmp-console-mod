@@ -9,6 +9,7 @@ import java.util.Map;
 import dev.loat.msmp_console.logging.Logger;
 import net.fabricmc.loader.api.FabricLoader;
 
+
 /**
  * Manages configuration files.
  */

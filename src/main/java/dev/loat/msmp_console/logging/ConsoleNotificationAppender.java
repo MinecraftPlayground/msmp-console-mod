@@ -23,9 +23,11 @@ import java.time.Instant;
  * in case {@link MSMPConsole#sendConsoleNotification(LogPayload)} itself produces
  * a log event.</p>
  */
-@Plugin(name = "ConsoleNotificationAppender",
-        category = Core.CATEGORY_NAME,
-        elementType = Appender.ELEMENT_TYPE)
+@Plugin(
+    name = "ConsoleNotificationAppender",
+    category = Core.CATEGORY_NAME,
+    elementType = Appender.ELEMENT_TYPE
+)
 public class ConsoleNotificationAppender extends AbstractAppender {
 
     /**
@@ -34,7 +36,7 @@ public class ConsoleNotificationAppender extends AbstractAppender {
      * {@code false} in the {@code finally} block.
      */
     private static final ThreadLocal<Boolean> IS_APPENDING =
-            ThreadLocal.withInitial(() -> false);
+        ThreadLocal.withInitial(() -> false);
 
     /**
      * Creates a new {@code ConsoleNotificationAppender} with the given name and filter.
@@ -112,10 +114,10 @@ public class ConsoleNotificationAppender extends AbstractAppender {
      * Immutable data transfer object representing a single captured log event.
      *
      * @param timestamp ISO-8601 timestamp of the log event
-     * @param level     log level (e.g. {@code INFO}, {@code WARN}, {@code ERROR})
-     * @param thread    name of the thread that produced the event
-     * @param logger    fully qualified name of the originating logger
-     * @param message   fully interpolated log message
+     * @param level log level (e.g. {@code INFO}, {@code WARN}, {@code ERROR})
+     * @param thread name of the thread that produced the event
+     * @param logger fully qualified name of the originating logger
+     * @param message fully interpolated log message
      * @param throwable serialized stacktrace, or {@code null} if no exception was thrown
      */
     public record LogPayload(

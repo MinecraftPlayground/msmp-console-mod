@@ -13,6 +13,9 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.jsonrpc.ManagementServer;
 import net.minecraft.server.jsonrpc.OutgoingRpcMethod;
+
+import java.lang.reflect.Field;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.Logger;
 import org.apache.logging.log4j.core.LoggerContext;
@@ -120,7 +123,7 @@ public class MSMPConsole implements ModInitializer {
     private static ManagementServer getManagementServer(MinecraftServer server) {
         Class<?> clazz = server.getClass();
         while (clazz != null) {
-            for (java.lang.reflect.Field field : clazz.getDeclaredFields()) {
+            for (Field field : clazz.getDeclaredFields()) {
                 if (field.getType() == ManagementServer.class) {
                     try {
                         field.setAccessible(true);

@@ -6,6 +6,7 @@ import net.minecraft.server.jsonrpc.OutgoingRpcMethod;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Invoker;
 
+
 /**
  * Mixin accessor for the private
  * {@code OutgoingRpcMethod.OutgoingRpcMethodBuilder#register(Identifier)} method.

@@ -14,6 +14,9 @@ import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.network.chat.MutableComponent;
 
 
+/**
+ * Custom SnakeYAML representer for serializing Minecraft chat components to YAML.
+ */
 public class ComponentRepresenter extends Representer {
     /**
      * Constructs a new component representer for serializing components (components -> YAML).

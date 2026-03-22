@@ -19,6 +19,13 @@ import org.yaml.snakeyaml.nodes.ScalarNode;
 import org.yaml.snakeyaml.nodes.SequenceNode;
 import org.yaml.snakeyaml.nodes.Tag;
 
+
+/**
+ * Custom SnakeYAML constructor for parsing Minecraft chat components from YAML.
+ * 
+ * This constructor extends the default SnakeYAML constructor and adds support for parsing YAML nodes into Minecraft's Component objects.
+ * It converts YAML nodes into JSON elements and then uses Minecraft's ComponentSerialization to decode them into Component instances.
+ */
 public class ComponentConstructor extends Constructor {
 
     /**

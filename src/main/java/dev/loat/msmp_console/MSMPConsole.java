@@ -4,6 +4,7 @@ import dev.loat.msmp_console.config.Config;
 import dev.loat.msmp_console.config.ConfigManager;
 import dev.loat.msmp_console.config.files.MSMPConsoleConfigFile;
 import dev.loat.msmp_console.logging.ConsoleNotificationAppender;
+import dev.loat.msmp_console.logging.Logger;
 import dev.loat.msmp_console.mixin.ManagementServerAccessor;
 import dev.loat.msmp_console.mixin.OutgoingRpcMethodBuilderAccessor;
 import net.fabricmc.api.ModInitializer;
@@ -17,8 +18,6 @@ import net.minecraft.server.jsonrpc.OutgoingRpcMethod;
 import java.lang.reflect.Field;
 
 import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.core.Logger;
-import org.apache.logging.log4j.core.LoggerContext;
 
 
 /**
@@ -75,7 +74,7 @@ public class MSMPConsole implements ModInitializer {
      */
     @Override
     public void onInitialize() {
-        dev.loat.msmp_console.logging.Logger.setLoggerClass(MSMPConsole.class);
+        Logger.setLoggerClass(MSMPConsole.class);
 
         ConfigManager.addConfig(new Config<>(
             ConfigManager.resolve("config.yml"),
@@ -91,7 +90,7 @@ public class MSMPConsole implements ModInitializer {
             managementServer = null;
         });
 
-        dev.loat.msmp_console.logging.Logger.info("MSMP Console initialized.");
+        Logger.info("MSMP Console initialized.");
     }
 
     /**
@@ -101,8 +100,8 @@ public class MSMPConsole implements ModInitializer {
      * configuration is required.</p>
      */
     private void registerLogAppender() {
-        LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
-        Logger root = ctx.getRootLogger();
+        org.apache.logging.log4j.core.LoggerContext ctx = (org.apache.logging.log4j.core.LoggerContext) LogManager.getContext(false);
+        org.apache.logging.log4j.core.Logger root = ctx.getRootLogger();
         ConsoleNotificationAppender appender =
             ConsoleNotificationAppender.createAppender("ConsoleNotificationAppender");
         appender.start();

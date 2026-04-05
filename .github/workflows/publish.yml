@@ -1,0 +1,37 @@
+name: 'Publish Datapack'
+
+env:
+  ARTIFACT_NAME: 'msmp_console'
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    name: 'Build'
+    uses: ./.github/workflows/build.yml
+
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Checkout Repository'
+        uses: actions/checkout@v4
+
+      - name: 'Download Artifact'
+        uses: actions/download-artifact@v4
+        with:
+          path: './artifacts'
+          name: '${{ env.ARTIFACT_NAME }}'
+      
+      - name: 'Publish to Modrinth'
+        uses: Kir-Antipov/mc-publish@v3.3
+        with:
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+          files: |
+            ./artifacts/*.jar
+
+          name: ${{ github.event.repository.name }}
+          version: ${{ github.event.release.tag_name }}
+          version-type: ${{ github.event.release.prerelease && 'beta' || 'release' }}
+          changelog: ${{ github.event.release.body }}

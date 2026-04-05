@@ -28,5 +28,15 @@
     "fabricloader": ">=${loader_version}",
     "fabric-api": "*",
     "minecraft": "${minecraft_version}"
+  },
+  "custom": {
+    "mc-publish": {
+      "modrinth": {
+        "project_id": "kVuh4pG0",
+        "loaders": [
+          "fabric"
+        ]
+      }
+    }
   }
 }

@@ -1,4 +1,4 @@
-name: 'Publish Datapack'
+name: 'Publish Mod'
 
 env:
   ARTIFACT_NAME: 'msmp_console'

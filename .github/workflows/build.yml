@@ -1,4 +1,4 @@
-name: 'Build Mod .jar'
+name: 'Build Mod'
 
 env:
   ARTIFACT_NAME: 'msmp_console'

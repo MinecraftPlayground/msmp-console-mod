@@ -1,11 +1,8 @@
 # MSMP Console
 
-A server-side Fabric mod for Minecraft 1.21.11+ that extends the [Minecraft Server Management Protocol](https://minecraft.wiki/w/Minecraft_Server_Management_Protocol) (MSMP) by forwarding every server console log event to all connected WebSocket clients as a JSON-RPC 2.0 notification.
+<img src="assets/icon.png" width="128" align="right">
 
-## Requirements
-
-- Minecraft 1.21.11+
-- [Fabric API](https://modrinth.com/mod/fabric-api) 0.141.3+1.21.11+
+A server-side Fabric mod that extends the [Minecraft Server Management Protocol](https://minecraft.wiki/w/Minecraft_Server_Management_Protocol) (MSMP) by forwarding every server console log event to all connected clients as a JSON-RPC 2.0 notification.
 
 ## Installation
 

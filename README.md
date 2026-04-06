@@ -4,6 +4,8 @@
 
 A server-side Fabric mod that extends the [Minecraft Server Management Protocol](https://minecraft.wiki/w/Minecraft_Server_Management_Protocol) (MSMP) by forwarding every server console log event to all connected clients as a JSON-RPC 2.0 notification.
 
+<br>
+
 ## Installation
 
 1. Download the mod `.jar` and place it in your server's `mods/` folder.

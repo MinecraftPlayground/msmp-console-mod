@@ -1,10 +1,8 @@
+<img src="assets/icon.png" width="64" align="right">
+
 # MSMP Console
 
-<img src="assets/icon.png" width="128" align="right">
-
 A server-side Fabric mod that extends the [Minecraft Server Management Protocol](https://minecraft.wiki/w/Minecraft_Server_Management_Protocol) (MSMP) by forwarding every server console log event to all connected clients as a JSON-RPC 2.0 notification.
-
-<br>
 
 ## Installation
 

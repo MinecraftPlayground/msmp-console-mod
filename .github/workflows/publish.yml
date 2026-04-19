@@ -31,8 +31,9 @@ jobs:
       - name: 'Read Minecraft Version'
         id: read_version
         run: |
-          cat gradle.properties | grep minecraft_version > minecraft_version.txt
-          echo "MINECRAFT_VERSION=$(cat minecraft_version.txt)" >> $GITHUB_ENV
+          minecraft_version=$(grep 'minecraft_version' gradle.properties | cut -d '=' -f2 | tr -d ' ')
+          echo "Minecraft version: $minecraft_version"
+          echo "MINECRAFT_VERSION=$minecraft_version" >> $GITHUB_OUTPUT
       
       - name: 'Publish to Modrinth'
         uses: Kir-Antipov/mc-publish@v3.3

@@ -2,8 +2,6 @@ package dev.loat.msmp_console.msmp.endpoints.log.notification.event;
 
 import java.util.function.Supplier;
 
-import org.apache.logging.log4j.LogManager;
-
 import dev.loat.msmp.MSMPNamespace;
 import dev.loat.msmp.MSMPNotification;
 import dev.loat.msmp.MSMPServer;
@@ -20,27 +18,19 @@ public class NotificationLogEvent {
             .responseSchema(NotificationLogEventPayload.SCHEMA)
             .register();
         
-        org.apache.logging.log4j.core.Logger root = ((org.apache.logging.log4j.core.LoggerContext) LogManager.getContext(false)).getRootLogger();
+        ConsoleNotificationAppender.register(payload -> {
+            MSMPServer server = msmpServer.get();
+            if (server == null) return;
 
-        ConsoleNotificationAppender appender = ConsoleNotificationAppender.createAppender(
-            "ConsoleNotificationAppender",
-            (payload) -> {
-                MSMPServer server = msmpServer.get();
-                if (server == null) return;
-
-                server.send(notification, new NotificationLogEventPayload(
-                    payload.timestamp(),
-                    payload.level(),
-                    payload.thread(),
-                    payload.logger(),
-                    payload.message(),
-                    payload.throwable()
-                ));
-            }
-        );
-
-        appender.start();
-        root.addAppender(appender);
+            server.send(notification, new NotificationLogEventPayload(
+                payload.timestamp(),
+                payload.level(),
+                payload.thread(),
+                payload.logger(),
+                payload.message(),
+                payload.throwable()
+            ));
+        });
     }
 }
 

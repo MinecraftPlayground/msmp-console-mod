@@ -3,72 +3,50 @@ package dev.loat.msmp_console.logging;
 import dev.loat.msmp_console.config.Config;
 
 import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.core.Appender;
-import org.apache.logging.log4j.core.Core;
-import org.apache.logging.log4j.core.Filter;
+import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.appender.AbstractAppender;
-import org.apache.logging.log4j.core.config.plugins.Plugin;
-import org.apache.logging.log4j.core.config.plugins.PluginFactory;
 import java.time.Instant;
 import java.util.function.Consumer;
 
+
 /**
- * A Log4j2 {@link Appender} that intercepts log events and forwards them to a consumer.
+ * A Log4j2 appender that forwards every log event at or above the configured minimum
+ * level to a listener as a {@link LogPayload}.
+ *
+ * <p>Attached directly to the root logger via {@link #register(Consumer)} - there is no
+ * Log4j2 config/plugin discovery involved, so no {@code @Plugin} metadata is needed.</p>
  */
-@Plugin(
-    name = "ConsoleNotificationAppender",
-    category = Core.CATEGORY_NAME,
-    elementType = Appender.ELEMENT_TYPE
-)
 public class ConsoleNotificationAppender extends AbstractAppender {
 
     /**
-     * Per-thread flag that prevents recursive invocation of {@link #append(LogEvent)}.
-     * Set to {@code true} while a notification is being dispatched, and reset to
-     * {@code false} in the {@code finally} block.
+     * Prevents feedback loops: if forwarding an event causes something to log again
+     * (e.g. an MSMP send failure), that new event must not be captured too.
      */
-    private static final ThreadLocal<Boolean> IS_APPENDING =
-        ThreadLocal.withInitial(() -> false);
+    private static final ThreadLocal<Boolean> IS_APPENDING = ThreadLocal.withInitial(() -> false);
 
     private final Consumer<LogPayload> listener;
 
-    /**
-     * Creates a new {@code ConsoleNotificationAppender} with the given name and filter.
-     *
-     * @param name   the name of this appender
-     * @param filter an optional Log4j2 filter, or {@code null} for no filtering
-     */
-    protected ConsoleNotificationAppender(String name, Filter filter, Consumer<LogPayload> listener) {
-        super(name, filter, null, true, null);
+    private ConsoleNotificationAppender(Consumer<LogPayload> listener) {
+        super("ConsoleNotificationAppender", null, null, true, null);
         this.listener = listener;
     }
 
     /**
-     * Factory method used by Log4j2's plugin system to instantiate this appender.
+     * Creates, starts, and attaches a new {@link ConsoleNotificationAppender} to the root
+     * logger, forwarding every captured event to {@code listener}.
      *
-     * @param name The name of the appender instance
-     * @param listener Callback for the appender
-     * @return A new {@code ConsoleNotificationAppender}
+     * @param listener Called for every log event at or above the configured minimum level
+     * @return The attached appender
      */
-    @PluginFactory
-    public static ConsoleNotificationAppender createAppender(String name, Consumer<LogPayload> listener) {
-        return new ConsoleNotificationAppender(name, null, listener);
-    }
+    public static ConsoleNotificationAppender register(Consumer<LogPayload> listener) {
+        ConsoleNotificationAppender appender = new ConsoleNotificationAppender(listener);
+        appender.start();
 
-    /**
-     * Checks whether the given event level is at or above the configured minimum level.
-     *
-     * <p>Falls back to {@link Level#INFO} if the configured value is missing or cannot be
-     * parsed into a valid Log4j2 level.</p>
-     *
-     * @param eventLevel The level of the incoming log event
-     * @return {@code true} if the event should be forwarded, {@code false} if it should be dropped
-     */
-    private static boolean isAtOrAboveMinLevel(Level eventLevel) {
-        String configuredLevel = Config.getConfig().log.level.toString();
-        Level minLevel = Level.toLevel(configuredLevel, Level.INFO);
-        return eventLevel.isMoreSpecificThan(minLevel);
+        ((LoggerContext) LogManager.getContext(false)).getRootLogger().addAppender(appender);
+
+        return appender;
     }
 
     /**
@@ -82,12 +60,14 @@ public class ConsoleNotificationAppender extends AbstractAppender {
     @Override
     public void append(LogEvent event) {
         if (IS_APPENDING.get()) return;
-        if (!isAtOrAboveMinLevel(event.getLevel())) return;
+
+        Level minLevel = Level.toLevel(Config.getConfig().log.level.toString(), Level.INFO);
+        if (!event.getLevel().isMoreSpecificThan(minLevel)) return;
 
         IS_APPENDING.set(true);
         try {
             if (listener != null) {
-                listener.accept(buildPayload(event));
+                listener.accept(toPayload(event));
             }
         } finally {
             IS_APPENDING.set(false);
@@ -103,7 +83,7 @@ public class ConsoleNotificationAppender extends AbstractAppender {
      * @param event the log event to extract data from
      * @return a {@link LogPayload} containing all relevant fields of the event
      */
-    private static LogPayload buildPayload(LogEvent event) {
+    private static LogPayload toPayload(LogEvent event) {
         String throwable = "";
         if (event.getThrown() != null) {
             Throwable thrown = event.getThrown();

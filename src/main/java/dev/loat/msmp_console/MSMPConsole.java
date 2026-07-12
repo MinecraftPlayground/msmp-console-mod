@@ -1,23 +1,16 @@
 package dev.loat.msmp_console;
 
+import dev.loat.msmp.MSMPNamespace;
+import dev.loat.msmp.MSMPServer;
 import dev.loat.msmp_console.config.Config;
-import dev.loat.msmp_console.config.ConfigManager;
-import dev.loat.msmp_console.config.files.MSMPConsoleConfigFile;
 import dev.loat.msmp_console.logging.ConsoleNotificationAppender;
 import dev.loat.msmp_console.logging.Logger;
-import dev.loat.msmp_console.mixin.ManagementServerAccessor;
 import dev.loat.msmp_console.mixin.OutgoingRpcMethodBuilderAccessor;
+import dev.loat.msmp_console.msmp.endpoints.Endpoints;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
-import net.minecraft.core.Holder;
-import net.minecraft.resources.Identifier;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.jsonrpc.ManagementServer;
 import net.minecraft.server.jsonrpc.OutgoingRpcMethod;
-
-import java.lang.reflect.Field;
-
-import org.apache.logging.log4j.LogManager;
 
 
 /**
@@ -41,31 +34,16 @@ import org.apache.logging.log4j.LogManager;
 public class MSMPConsole implements ModInitializer {
 
     /**
-     * The registered JSON-RPC notification method for console log messages.
-     *
-     * <p>Registered under {@code console:notification/message} using
-     * {@link OutgoingRpcMethodBuilderAccessor#invokeRegister(Identifier)} to bypass
-     * the default {@code minecraft:notification/} namespace that the public
-     * {@code register(String)} overload would apply.</p>
-     *
-     * <p>The {@code @SuppressWarnings("unchecked")} is required because the cast from
-     * {@link OutgoingRpcMethod.OutgoingRpcMethodBuilder} to
-     * {@link OutgoingRpcMethodBuilderAccessor} is a generic unchecked cast that is
-     * safe at runtime due to Mixin's bytecode transformation.</p>
+     * The shared {@code entity} namespace used for all MSMP registrations.
+     * Attached to the running server in {@code SERVER_STARTED} and detached in {@code SERVER_STOPPED}.
      */
-    @SuppressWarnings("unchecked")
-    public static final Holder.Reference<OutgoingRpcMethod<ConsoleLogPayload, Void>> CONSOLE_MESSAGE =
-        ((OutgoingRpcMethodBuilderAccessor<ConsoleLogPayload, Void>)
-            OutgoingRpcMethod.<ConsoleLogPayload>notificationWithParams()
-                .description("A server console log message")
-                .param("message", ConsoleLogPayload.SCHEMA)
-        ).invokeRegister(Identifier.fromNamespaceAndPath("console", "notification/log_event"));
+    private static final MSMPNamespace NS = new MSMPNamespace("console");
 
     /**
-     * The cached {@link ManagementServer} instance, set on {@code SERVER_STARTED}
-     * and cleared on {@code SERVER_STOPPED}. {@code null} if the server is not running.
+     * Provides access to the {@link net.minecraft.server.jsonrpc.ManagementServer}
+     * for broadcasting notifications. {@code null} when no server is running.
      */
-    private static ManagementServer managementServer;
+    private static MSMPServer msmp;
 
     /**
      * Called by Fabric when the mod is initialized.
@@ -76,94 +54,19 @@ public class MSMPConsole implements ModInitializer {
     public void onInitialize() {
         Logger.setLoggerClass(MSMPConsole.class);
 
-        ConfigManager.addConfig(new Config<>(
-            ConfigManager.resolve("config.yml"),
-            MSMPConsoleConfigFile.class
-        ));
-    
-        registerLogAppender();
+        Config.register();
+
+        Endpoints.register(NS, () -> msmp);
 
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
-            managementServer = getManagementServer(server);
+            NS.attach(server);
+            msmp = new MSMPServer(server);
         });
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
-            managementServer = null;
+            NS.detach();
+            msmp = null;
         });
 
-        Logger.info("MSMP Console initialized.");
-    }
-
-    /**
-     * Attaches a {@link ConsoleNotificationAppender} to the root Log4j2 logger.
-     *
-     * <p>The appender is created programmatically so no {@code log4j2.xml}
-     * configuration is required.</p>
-     */
-    private void registerLogAppender() {
-        org.apache.logging.log4j.core.LoggerContext ctx = (org.apache.logging.log4j.core.LoggerContext) LogManager.getContext(false);
-        org.apache.logging.log4j.core.Logger root = ctx.getRootLogger();
-        ConsoleNotificationAppender appender =
-            ConsoleNotificationAppender.createAppender("ConsoleNotificationAppender");
-        appender.start();
-        root.addAppender(appender);
-    }
-
-    /**
-     * Finds the {@link ManagementServer} instance held by the given {@link MinecraftServer}
-     * by traversing its class hierarchy via reflection.
-     *
-     * <p>The field ({@code jsonRpcServer} in {@code DedicatedServer}) is not publicly
-     * accessible, so reflection is used to locate the first field of type
-     * {@link ManagementServer} in the class hierarchy.</p>
-     *
-     * @param server the running {@link MinecraftServer} instance
-     * @return the {@link ManagementServer} instance, or {@code null} if not found
-     */
-    private static ManagementServer getManagementServer(MinecraftServer server) {
-        Class<?> clazz = server.getClass();
-        while (clazz != null) {
-            for (Field field : clazz.getDeclaredFields()) {
-                if (field.getType() == ManagementServer.class) {
-                    try {
-                        field.setAccessible(true);
-                        ManagementServer ms = (ManagementServer) field.get(server);
-                        if (ms != null) return ms;
-                    } catch (Exception ignored) {}
-                }
-            }
-            clazz = clazz.getSuperclass();
-        }
-        return null;
-    }
-
-    /**
-     * Sends a console log notification to all connected MSMP clients.
-     *
-     * <p>Called by {@link ConsoleNotificationAppender} for every intercepted log event.
-     * Does nothing if the {@link ManagementServer} is not yet available (i.e. before
-     * {@code SERVER_STARTED} or after {@code SERVER_STOPPED}).</p>
-     *
-     * <p>The {@link ConsoleNotificationAppender.LogPayload} is mapped to a
-     * {@link ConsoleLogPayload} with {@code null} throwables replaced by empty strings
-     * to satisfy the non-null codec contract.</p>
-     *
-     * @param payload the log payload captured by {@link ConsoleNotificationAppender}
-     */
-    public static void sendConsoleNotification(ConsoleNotificationAppender.LogPayload payload) {
-        if (managementServer == null) return;
-
-        ConsoleLogPayload rpcPayload = new ConsoleLogPayload(
-            payload.timestamp(),
-            payload.level(),
-            payload.thread(),
-            payload.logger(),
-            payload.message(),
-            payload.throwable() != null ? payload.throwable() : ""
-        );
-
-        ((ManagementServerAccessor) managementServer)
-            .invokeForEachConnection(conn ->
-                conn.sendNotification(CONSOLE_MESSAGE, rpcPayload)
-            );
+        Logger.info("Mod initialized.");
     }
 }

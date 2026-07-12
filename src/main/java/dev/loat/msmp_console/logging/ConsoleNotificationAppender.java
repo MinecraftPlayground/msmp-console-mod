@@ -1,66 +1,56 @@
 package dev.loat.msmp_console.logging;
 
-import dev.loat.msmp_console.MSMPConsole;
-import org.apache.logging.log4j.core.Appender;
-import org.apache.logging.log4j.core.Core;
-import org.apache.logging.log4j.core.Filter;
+import dev.loat.msmp_console.config.Config;
+
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.appender.AbstractAppender;
-import org.apache.logging.log4j.core.config.plugins.Plugin;
-import org.apache.logging.log4j.core.config.plugins.PluginFactory;
 import java.time.Instant;
+import java.util.function.Consumer;
 
 
 /**
- * A Log4j2 {@link Appender} that intercepts every log event from the root logger
- * and forwards it as a JSON-RPC notification to all connected MSMP clients via
- * {@link MSMPConsole#sendConsoleNotification(LogPayload)}.
+ * A Log4j2 appender that forwards every log event at or above the configured minimum
+ * level to a listener as a {@link LogPayload}.
  *
- * <p>The appender is registered programmatically in {@link MSMPConsole#onInitialize()}
- * and does not require any Log4j2 XML configuration.</p>
- *
- * <p>A per-thread reentrancy guard ({@link #IS_APPENDING}) prevents infinite recursion
- * in case {@link MSMPConsole#sendConsoleNotification(LogPayload)} itself produces
- * a log event.</p>
+ * <p>Attached directly to the root logger via {@link #register(Consumer)} - there is no
+ * Log4j2 config/plugin discovery involved, so no {@code @Plugin} metadata is needed.</p>
  */
-@Plugin(
-    name = "ConsoleNotificationAppender",
-    category = Core.CATEGORY_NAME,
-    elementType = Appender.ELEMENT_TYPE
-)
 public class ConsoleNotificationAppender extends AbstractAppender {
 
     /**
-     * Per-thread flag that prevents recursive invocation of {@link #append(LogEvent)}.
-     * Set to {@code true} while a notification is being dispatched, and reset to
-     * {@code false} in the {@code finally} block.
+     * Prevents feedback loops: if forwarding an event causes something to log again
+     * (e.g. an MSMP send failure), that new event must not be captured too.
      */
-    private static final ThreadLocal<Boolean> IS_APPENDING =
-        ThreadLocal.withInitial(() -> false);
+    private static final ThreadLocal<Boolean> IS_APPENDING = ThreadLocal.withInitial(() -> false);
 
-    /**
-     * Creates a new {@code ConsoleNotificationAppender} with the given name and filter.
-     *
-     * @param name   the name of this appender
-     * @param filter an optional Log4j2 filter, or {@code null} for no filtering
-     */
-    protected ConsoleNotificationAppender(String name, Filter filter) {
-        super(name, filter, null, true, null);
+    private final Consumer<LogPayload> listener;
+
+    private ConsoleNotificationAppender(Consumer<LogPayload> listener) {
+        super("ConsoleNotificationAppender", null, null, true, null);
+        this.listener = listener;
     }
 
     /**
-     * Factory method used by Log4j2's plugin system to instantiate this appender.
+     * Creates, starts, and attaches a new {@link ConsoleNotificationAppender} to the root
+     * logger, forwarding every captured event to {@code listener}.
      *
-     * @param name the name of the appender instance
-     * @return a new {@code ConsoleNotificationAppender}
+     * @param listener Called for every log event at or above the configured minimum level
+     * @return The attached appender
      */
-    @PluginFactory
-    public static ConsoleNotificationAppender createAppender(String name) {
-        return new ConsoleNotificationAppender(name, null);
+    public static ConsoleNotificationAppender register(Consumer<LogPayload> listener) {
+        ConsoleNotificationAppender appender = new ConsoleNotificationAppender(listener);
+        appender.start();
+
+        ((LoggerContext) LogManager.getContext(false)).getRootLogger().addAppender(appender);
+
+        return appender;
     }
 
     /**
-     * Intercepts a log event and forwards it to {@link MSMPConsole#sendConsoleNotification(LogPayload)}.
+     * Intercepts a log event and.
      *
      * <p>Guarded by {@link #IS_APPENDING} to prevent infinite recursion. If the flag
      * is already set on the current thread, the event is silently dropped.</p>
@@ -70,9 +60,15 @@ public class ConsoleNotificationAppender extends AbstractAppender {
     @Override
     public void append(LogEvent event) {
         if (IS_APPENDING.get()) return;
+
+        Level minLevel = Level.toLevel(Config.getConfig().log.level.toString(), Level.INFO);
+        if (!event.getLevel().isMoreSpecificThan(minLevel)) return;
+
         IS_APPENDING.set(true);
         try {
-            MSMPConsole.sendConsoleNotification(buildPayload(event));
+            if (listener != null) {
+                listener.accept(toPayload(event));
+            }
         } finally {
             IS_APPENDING.set(false);
         }
@@ -87,25 +83,29 @@ public class ConsoleNotificationAppender extends AbstractAppender {
      * @param event the log event to extract data from
      * @return a {@link LogPayload} containing all relevant fields of the event
      */
-    private static LogPayload buildPayload(LogEvent event) {
-        String throwable = null;
+    private static LogPayload toPayload(LogEvent event) {
+        String throwable = "";
         if (event.getThrown() != null) {
-            Throwable t = event.getThrown();
-            StringBuilder sb = new StringBuilder();
-            sb.append(t.getClass().getName());
-            if (t.getMessage() != null)
-                sb.append(": ").append(t.getMessage());
-            for (StackTraceElement el : t.getStackTrace())
-                sb.append("\n\tat ").append(el);
-            throwable = sb.toString();
+            Throwable thrown = event.getThrown();
+            StringBuilder stringBuilder = new StringBuilder();
+            stringBuilder.append(thrown.getClass().getName());
+            if (thrown.getMessage() != null) {
+                stringBuilder.append(": ").append(thrown.getMessage());
+            }
+            for (StackTraceElement el : thrown.getStackTrace()) {
+                stringBuilder.append("\n\tat ").append(el);
+            }
+            throwable = stringBuilder.toString();
         }
 
-        return new LogPayload(
+        String message = event.getMessage() == null ? "" : event.getMessage().getFormattedMessage();
+
+        return new ConsoleNotificationAppender.LogPayload(
             Instant.ofEpochMilli(event.getTimeMillis()).toString(),
             event.getLevel().name(),
             event.getThreadName(),
             event.getLoggerName(),
-            event.getMessage().getFormattedMessage(),
+            message,
             throwable
         );
     }

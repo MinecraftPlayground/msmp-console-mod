@@ -6,29 +6,13 @@ plugins {
 version = project.mod_version
 group = project.maven_group
 
-loom {
-    splitEnvironmentSourceSets()
-
-    mods {
-        "msmp-console" {
-            sourceSet sourceSets.main
-            sourceSet sourceSets.client
-        }
-    }
-}
-
-fabricApi {
-    configureDataGeneration {
-        client = true
-    }
-}
-
 repositories {
     // Add repositories to retrieve artifacts from in here.
     // You should only use this when depending on other mods because
     // Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
     // See https://docs.gradle.org/current/userguide/declaring_repositories.html
     // for more information about repositories.
+    maven { url = uri("https://jitpack.io") }
 }
 
 dependencies {
@@ -39,7 +23,8 @@ dependencies {
 
     implementation("net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}")
 
-    implementation(include('org.yaml:snakeyaml:2.2'))
+    implementation(include("com.github.MinecraftPlayground:msmp-lib-mod:v2.1.1"))
+    implementation(include("com.github.MinecraftPlayground:config-lib-mod:v1.3.5"))
 }
 
 processResources {

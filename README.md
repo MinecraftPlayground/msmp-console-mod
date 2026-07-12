@@ -53,9 +53,9 @@ The mod currently provides the following MSMP RPC methods. All of these methods 
 
 The mod also provides the following MSMP RPC notification that clients can subscribe to:
 
-| Method                           | Description                                                                         |
-|:---------------------------------|:------------------------------------------------------------------------------------|
-| `console:notification/log/event` | Fired for every server console log event at or above the configured `log.min-level` |
+| Method                           | Description                                                                     |
+|:---------------------------------|:--------------------------------------------------------------------------------|
+| `console:notification/log/event` | Fired for every server console log event at or above the configured `log.level` |
 
 
 ## Method Reference

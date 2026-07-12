@@ -15,7 +15,7 @@ public class LogConfig {
     }
 
     @Annotation.Comment("""
-        The minimum log level that gets forwarded as a console:notification/log_event.
+        The minimum log level that gets forwarded as a console:notification/log/event.
         Events below this level are ignored entirely and never sent to connected clients.
     """)
     public LogLevel level = LogLevel.INFO;

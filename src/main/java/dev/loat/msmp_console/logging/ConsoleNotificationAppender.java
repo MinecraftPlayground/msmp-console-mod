@@ -1,6 +1,7 @@
 package dev.loat.msmp_console.logging;
 
 import dev.loat.msmp_console.MSMPConsole;
+
 import org.apache.logging.log4j.core.Appender;
 import org.apache.logging.log4j.core.Core;
 import org.apache.logging.log4j.core.Filter;
@@ -9,19 +10,10 @@ import org.apache.logging.log4j.core.appender.AbstractAppender;
 import org.apache.logging.log4j.core.config.plugins.Plugin;
 import org.apache.logging.log4j.core.config.plugins.PluginFactory;
 import java.time.Instant;
-
+import java.util.function.Consumer;
 
 /**
- * A Log4j2 {@link Appender} that intercepts every log event from the root logger
- * and forwards it as a JSON-RPC notification to all connected MSMP clients via
- * {@link MSMPConsole#sendConsoleNotification(LogPayload)}.
- *
- * <p>The appender is registered programmatically in {@link MSMPConsole#onInitialize()}
- * and does not require any Log4j2 XML configuration.</p>
- *
- * <p>A per-thread reentrancy guard ({@link #IS_APPENDING}) prevents infinite recursion
- * in case {@link MSMPConsole#sendConsoleNotification(LogPayload)} itself produces
- * a log event.</p>
+ * A Log4j2 {@link Appender} that intercepts log events and forwards them to a consumer.
  */
 @Plugin(
     name = "ConsoleNotificationAppender",
@@ -38,25 +30,29 @@ public class ConsoleNotificationAppender extends AbstractAppender {
     private static final ThreadLocal<Boolean> IS_APPENDING =
         ThreadLocal.withInitial(() -> false);
 
+    private final Consumer<LogPayload> listener;
+
     /**
      * Creates a new {@code ConsoleNotificationAppender} with the given name and filter.
      *
      * @param name   the name of this appender
      * @param filter an optional Log4j2 filter, or {@code null} for no filtering
      */
-    protected ConsoleNotificationAppender(String name, Filter filter) {
+    protected ConsoleNotificationAppender(String name, Filter filter, Consumer<LogPayload> listener) {
         super(name, filter, null, true, null);
+        this.listener = listener;
     }
 
     /**
      * Factory method used by Log4j2's plugin system to instantiate this appender.
      *
-     * @param name the name of the appender instance
-     * @return a new {@code ConsoleNotificationAppender}
+     * @param name The name of the appender instance
+     * @param listener Callback for the appender
+     * @return A new {@code ConsoleNotificationAppender}
      */
     @PluginFactory
-    public static ConsoleNotificationAppender createAppender(String name) {
-        return new ConsoleNotificationAppender(name, null);
+    public static ConsoleNotificationAppender createAppender(String name, Consumer<LogPayload> listener) {
+        return new ConsoleNotificationAppender(name, null, listener);
     }
 
     /**
@@ -72,7 +68,9 @@ public class ConsoleNotificationAppender extends AbstractAppender {
         if (IS_APPENDING.get()) return;
         IS_APPENDING.set(true);
         try {
-            MSMPConsole.sendConsoleNotification(buildPayload(event));
+            if (listener != null) {
+                listener.accept(buildPayload(event));
+            }
         } finally {
             IS_APPENDING.set(false);
         }
@@ -88,24 +86,28 @@ public class ConsoleNotificationAppender extends AbstractAppender {
      * @return a {@link LogPayload} containing all relevant fields of the event
      */
     private static LogPayload buildPayload(LogEvent event) {
-        String throwable = null;
+        String throwable = "";
         if (event.getThrown() != null) {
-            Throwable t = event.getThrown();
-            StringBuilder sb = new StringBuilder();
-            sb.append(t.getClass().getName());
-            if (t.getMessage() != null)
-                sb.append(": ").append(t.getMessage());
-            for (StackTraceElement el : t.getStackTrace())
-                sb.append("\n\tat ").append(el);
-            throwable = sb.toString();
+            Throwable thrown = event.getThrown();
+            StringBuilder stringBuilder = new StringBuilder();
+            stringBuilder.append(thrown.getClass().getName());
+            if (thrown.getMessage() != null) {
+                stringBuilder.append(": ").append(thrown.getMessage());
+            }
+            for (StackTraceElement el : thrown.getStackTrace()) {
+                stringBuilder.append("\n\tat ").append(el);
+            }
+            throwable = stringBuilder.toString();
         }
+
+        String message = event.getMessage() == null ? "" : event.getMessage().getFormattedMessage();
 
         return new LogPayload(
             Instant.ofEpochMilli(event.getTimeMillis()).toString(),
             event.getLevel().name(),
             event.getThreadName(),
             event.getLoggerName(),
-            event.getMessage().getFormattedMessage(),
+            message,
             throwable
         );
     }

@@ -3,31 +3,24 @@
   "id": "msmp-console",
   "version": "${version}",
   "name": "MSMP Console",
-  "description": "This Minecraft Fabric Mod Extends the Minecraft Server Management Protocol (MSMP) forwarding every server console log event to all connected clients as a JSON-RPC 2.0 notification.",
+  "description": "Extends the Minecraft Server Management Protocol (MSMP) by providing additional functions for interacting with the console",
   "authors": [],
   "contact": {},
   "license": "LGPL-3.0-only",
   "icon": "assets/icon.png",
   "environment": "server",
   "entrypoints": {
-    "fabric-datagen": [
-      "dev.loat.msmp_console.client.MSMPConsoleDataGenerator"
-    ],
     "main": [
       "dev.loat.msmp_console.MSMPConsole"
     ]
   },
   "mixins": [
-    "msmp-console.mixins.json",
-    {
-      "config": "msmp-console.client.mixins.json",
-      "environment": "client"
-    }
+    "msmp-console.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=${loader_version}",
     "fabric-api": "*",
-    "minecraft": "${minecraft_version}"
+    "minecraft": "^${minecraft_version}"
   },
   "custom": {
     "mc-publish": {

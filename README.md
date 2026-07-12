@@ -26,7 +26,7 @@ On first start, the mod generates a configuration file at `<server_root_dir>/con
 
 # Configuration for log related settings.
 log:
-  # The minimum log level that gets forwarded as a console:notification/log_event.
+  # The minimum log level that gets forwarded as a console:notification/log/event.
   # Events below this level are ignored entirely and never sent to connected clients.
   # @possible: TRACE | DEBUG | INFO | WARN | ERROR | FATAL
   # @default: 'INFO'

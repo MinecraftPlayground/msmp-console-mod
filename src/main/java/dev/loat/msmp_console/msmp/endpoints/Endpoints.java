@@ -3,6 +3,7 @@ package dev.loat.msmp_console.msmp.endpoints;
 import dev.loat.msmp.MSMPNamespace;
 import dev.loat.msmp.MSMPServer;
 import dev.loat.msmp_console.msmp.endpoints.log.notification.event.NotificationLogEvent;
+import dev.loat.msmp_console.msmp.endpoints.send.Send;
 
 import java.util.function.Supplier;
 
@@ -25,5 +26,7 @@ public class Endpoints {
     public static void register(MSMPNamespace namespace, Supplier<MSMPServer> msmpServer) {
         
         NotificationLogEvent.register(namespace, msmpServer);
+        
+        Send.register(namespace);
     }
 }

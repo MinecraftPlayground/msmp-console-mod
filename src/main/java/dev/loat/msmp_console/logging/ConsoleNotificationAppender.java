@@ -1,7 +1,8 @@
 package dev.loat.msmp_console.logging;
 
-import dev.loat.msmp_console.MSMPConsole;
+import dev.loat.msmp_console.config.Config;
 
+import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.Appender;
 import org.apache.logging.log4j.core.Core;
 import org.apache.logging.log4j.core.Filter;
@@ -56,7 +57,22 @@ public class ConsoleNotificationAppender extends AbstractAppender {
     }
 
     /**
-     * Intercepts a log event and forwards it to {@link MSMPConsole#sendConsoleNotification(LogPayload)}.
+     * Checks whether the given event level is at or above the configured minimum level.
+     *
+     * <p>Falls back to {@link Level#INFO} if the configured value is missing or cannot be
+     * parsed into a valid Log4j2 level.</p>
+     *
+     * @param eventLevel The level of the incoming log event
+     * @return {@code true} if the event should be forwarded, {@code false} if it should be dropped
+     */
+    private static boolean isAtOrAboveMinLevel(Level eventLevel) {
+        String configuredLevel = Config.getConfig().log.level.toString();
+        Level minLevel = Level.toLevel(configuredLevel, Level.INFO);
+        return eventLevel.isMoreSpecificThan(minLevel);
+    }
+
+    /**
+     * Intercepts a log event and.
      *
      * <p>Guarded by {@link #IS_APPENDING} to prevent infinite recursion. If the flag
      * is already set on the current thread, the event is silently dropped.</p>
@@ -66,6 +82,8 @@ public class ConsoleNotificationAppender extends AbstractAppender {
     @Override
     public void append(LogEvent event) {
         if (IS_APPENDING.get()) return;
+        if (!isAtOrAboveMinLevel(event.getLevel())) return;
+
         IS_APPENDING.set(true);
         try {
             if (listener != null) {
@@ -102,7 +120,7 @@ public class ConsoleNotificationAppender extends AbstractAppender {
 
         String message = event.getMessage() == null ? "" : event.getMessage().getFormattedMessage();
 
-        return new LogPayload(
+        return new ConsoleNotificationAppender.LogPayload(
             Instant.ofEpochMilli(event.getTimeMillis()).toString(),
             event.getLevel().name(),
             event.getThreadName(),
